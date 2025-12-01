@@ -1,0 +1,247 @@
+/* 
+ *  Author: Rada Berar
+ *  email: ujagaga@gmail.com
+ *  
+ *  WiFi connection module. 
+ *  Modified to keep AP always on (WIFI_AP_STA) and create an open AP.
+ */
+#include <ESP8266WiFi.h>
+#include <ESP_EEPROM.h>
+#include <lwip/init.h>
+#include <lwip/dns.h>
+#include <lwip/ip_addr.h>
+#include "config.h"
+#include "NTPSync.h"
+
+static char myApName[32] = {0};    /* Array to form AP name based on read MAC */
+static char st_ssid[SSID_SIZE] = {0};    /* SSID to connect to */
+static char st_pass[WIFI_PASS_SIZE];    /* Password for the requested SSID */
+static unsigned long connectionTimeoutCheck = 0;
+static IPAddress stationIP;
+static IPAddress apIP(192, 168, 1, 1);
+static bool apMode = true;                     // AP stays on
+static uint32_t apModeAttempTime = 0;
+static IPAddress dns(8,8,8,8);
+static bool stationConnectedOnce = false;      // mark first successful STA connect
+
+char* WIFIC_getDeviceName(void){
+  return myApName;
+}
+
+IPAddress WIFIC_getApIp(void){
+  return apIP;
+}
+
+bool WIFIC_isApMode(void){
+  return apMode;
+}
+
+/* Returns wifi scan results */
+String WIFIC_getApList(void){
+  String result = "";
+  // WiFi.scanNetworks will return the number of networks found
+  int n = WiFi.scanNetworks(); 
+  if (n > 0){ 
+    result = WiFi.SSID(0); 
+    for (int i = 1; i < n; ++i)
+    {      
+      result += "|" + WiFi.SSID(i);  
+    }
+  }
+  return result;
+}
+
+/* Initiates a local AP (open, no password) AND keeps AP+STA mode available */
+void WIFIC_APMode(void){ 
+  String wifi_statusMessage; 
+  Serial.println("\nStarting AP");  
+
+  // Ensure module supports both AP and STA concurrently
+  WiFi.mode(WIFI_AP_STA);  
+  WiFi.begin();   // no harm: keeps WiFi internals initialized
+
+  String ApName = String(AP_NAME_PREFIX) + WiFi.macAddress();
+  ApName.toCharArray(myApName, sizeof(myApName)); 
+
+  // configure AP IP
+  WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
+  
+  // create OPEN AP (no password)
+  if (WiFi.softAP(myApName)) {
+    wifi_statusMessage = "Running in AP mode (open). SSID: " + String(myApName) + ", IP:" + apIP.toString();  
+    apMode = true;    
+  } else {
+    wifi_statusMessage = "Failed to switch to AP mode.";
+  }
+  Serial.println(wifi_statusMessage);
+  
+  apModeAttempTime = millis();
+}
+
+/* Attempt to use saved SSID credentials to join an existing network while keeping AP active.
+ * Uses WIFI_AP_STA mode so AP is not removed.
+ */
+bool WIFIC_stationMode(void){
+  Serial.printf("\n\nTrying STA mode with [%s] and [%s]\r\n", st_ssid, st_pass);
+  
+  // Keep AP active while trying to connect as station
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.config(0U, 0U, 0U);  // This disables static config (use DHCP)
+  WiFi.begin(st_ssid, st_pass); 
+
+  /* set timeout to 30 seconds*/
+  int i = 30;    
+  while((i > 0) && (WiFi.status() != WL_CONNECTED)){
+    delay(1000);
+    ESP.wdtFeed();       
+    i--;
+    Serial.print(".");
+  } 
+  Serial.println();  
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Connection failed, trying DHCP renew...");
+    WiFi.disconnect(true); // ← clears old DHCP lease
+    delay(200);
+    WiFi.begin(st_ssid, st_pass);
+
+    int t = 10;
+    while(t-- > 0 && WiFi.status() != WL_CONNECTED) {
+        delay(1000);
+        ESP.wdtFeed();
+        Serial.print(".");
+    }
+    Serial.println();
+  }
+
+  if(WiFi.status() == WL_CONNECTED){
+    stationIP = WiFi.localIP();
+    IPAddress gateway = WiFi.gatewayIP();
+    // force dns server
+    ip_addr_t dnsserver;
+    IP4_ADDR(&dnsserver, dns[0], dns[1], dns[2], dns[3]);
+    dns_setserver(0, &dnsserver);
+
+    Serial.printf("IP address: %s, gateway: %s \n", stationIP.toString().c_str(), gateway.toString().c_str());
+    // Keep AP active — do not set apMode = false
+    // Mark that we've connected once for any one-time actions
+    if (!stationConnectedOnce) {
+      stationConnectedOnce = true;
+      // initialize NTP subsystem (fallback UTC + start SNTP); NTPS_init is safe to call more than once
+      NTPS_init();
+    }
+    return true;
+  } else {    
+    // failed to connect — ensure AP mode is active so user can connect to config UI
+    WIFIC_APMode();    
+  }    
+  return false;    
+}
+
+String WIFIC_getStSSID(void){
+  return String(st_ssid);
+}
+
+void WIFIC_setStSSID(String new_ssid){
+  EEPROM.begin(EEPROM_SIZE);
+  
+  uint16_t addr;
+  
+  for(addr = 0; addr < new_ssid.length() && addr < SSID_SIZE - 1; addr++){    
+    EEPROM.put(addr + SSID_EEPROM_ADDR, new_ssid[addr]);
+    st_ssid[addr] = new_ssid[addr];
+  }
+  EEPROM.put(addr + SSID_EEPROM_ADDR, 0);  
+  st_ssid[addr] = 0;
+  
+  EEPROM.commit();
+}
+
+String WIFIC_getStPass(void){
+  return String(st_pass);
+}
+
+void WIFIC_setStPass(String new_pass){
+  EEPROM.begin(EEPROM_SIZE);
+  
+  uint16_t addr;
+  for(addr = 0; addr < new_pass.length() && addr < WIFI_PASS_SIZE - 1; addr++){   
+    EEPROM.put(addr + WIFI_PASS_EEPROM_ADDR, new_pass[addr]);
+    st_pass[addr] = new_pass[addr];
+  }
+  EEPROM.put(addr + WIFI_PASS_EEPROM_ADDR, 0);
+  st_pass[addr] = 0;
+    
+  EEPROM.commit();
+}
+
+IPAddress WIFIC_getStIP(void){
+  return stationIP;
+}
+
+void WIFIC_init(void){  
+  ESP.wdtFeed();
+   /* Read settings from EEPROM */
+  EEPROM.begin(EEPROM_SIZE);
+  uint16_t i = 0;
+  
+  do{
+    EEPROM.get(i + WIFI_PASS_EEPROM_ADDR, st_pass[i]);
+    if((st_pass[i] < 32) || (st_pass[i] > 126)){
+      /* Non printable character */
+      break;
+    }
+    i++;
+  }while(i < WIFI_PASS_SIZE);
+  st_pass[i] = 0;
+
+  i = 0;
+  do{
+    EEPROM.get(i + SSID_EEPROM_ADDR, st_ssid[i]);
+    if((st_ssid[i] < 32) || (st_ssid[i] > 126)){
+      /* Non printable character */
+      break;
+    }
+    i++;
+  }while(i < SSID_SIZE);
+  st_ssid[i] = 0;
+
+  // Start in AP+STA mode with open AP
+  WIFIC_APMode();
+}
+
+void WIFIC_process(void) {
+  static unsigned long lastScanTime = 0;
+  const unsigned long scanInterval = 5000; // 5 seconds
+
+  // We always keep AP mode active. Periodically scan for saved SSID and attempt STA connect after timeout.
+  unsigned long now = millis();
+
+  // If timeout expired or we’re ready for a retry
+  if ((now - apModeAttempTime) > (AP_MODE_TIMEOUT_S * 1000) && 
+      (now - lastScanTime) > scanInterval) {
+
+    // Reset periodic scan timer
+    lastScanTime = now;
+
+    if (wifi_softap_get_station_num() > 0) {
+      Serial.println("Clients connected — AP continues (still scanning).");        
+      // continue to attempt STA connect too
+    } else {
+      Serial.println("No clients connected to AP — still scanning for known SSID...");
+    }
+
+    Serial.println("Scanning for known SSID...");
+    String ssidString = String(st_ssid);
+    String apList = WIFIC_getApList();
+    Serial.println(apList);
+
+    if ((ssidString.length() > 0) && (apList.indexOf(ssidString) != -1)) {
+      apModeAttempTime = now; // reset main AP timeout
+      Serial.printf("Found saved SSID '%s', trying STA connect...\n", ssidString.c_str());
+      WIFIC_stationMode();
+    } else {
+      Serial.printf("Saved SSID '%s' not found, will retry in %lu ms.\n", ssidString.c_str(), scanInterval);
+    }
+  }
+}
