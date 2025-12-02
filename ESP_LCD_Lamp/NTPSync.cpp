@@ -5,6 +5,7 @@
 #include <WiFiClient.h>
 #include <ESP8266WiFi.h>
 #include <time.h>
+#include <WiFiClientSecureBearSSL.h>
 
 static bool tzFetchedThisBoot = false;      // we fetch TZ only once per boot
 static bool ntpSynced = false;
@@ -76,43 +77,56 @@ static String buildPosixTZ(const String& utc_offset, bool dst) {
   return tz;
 }
 
-// Try to fetch timezone info from WorldTimeAPI and apply it immediately.
-// This is called once (first time WiFi is connected). It blocks for the HTTP request only.
+// -----------------------------------------------------------------------------
+// Fetch timezone from timeapi.io and apply it once per boot
+// -----------------------------------------------------------------------------
 static void fetchAndApplyTimezoneOnce() {
-  if (tzFetchedThisBoot) return;
-  if (WiFi.status() != WL_CONNECTED) return;
+    if (tzFetchedThisBoot) return;              // already fetched
+    if (WiFi.status() != WL_CONNECTED) return;  // no WiFi
 
-  Serial.println("NTPS: Fetching timezone from worldtimeapi...");
+    Serial.println("NTPS: Fetching timezone from timeapi.io via HTTPS...");
 
-  WiFiClient client;
-  HTTPClient http;
-  String url = String("http://worldtimeapi.org/api/timezone/") + REGION;
+    BearSSL::WiFiClientSecure client;
+    client.setInsecure();  // skip certificate validation
 
-  if (!http.begin(client, url)) {
-    Serial.println("NTPS: http.begin() failed");
-    return;
-  }
+    HTTPClient https;
+    const char* host = "timeapi.io";
+    const char* path = "/api/Time/current/zone?timeZone=Europe/Belgrade";
 
-  int code = http.GET();
-  if (code != 200) {
-    Serial.printf("NTPS: HTTP GET failed: %d\n", code);
-    http.end();
-    return;
-  }
+    if (!https.begin(client, host, 443, path, true)) { // HTTPS with SNI
+        Serial.println("NTPS: HTTPS begin failed");
+    }
 
-  String payload = http.getString();
-  http.end();
+    int code = https.GET();
+    if (code != 200) {
+        Serial.printf("NTPS: HTTPS GET failed: %d\n", code);
+        https.end();
+        return;
+    }
 
-  String utc_offset = extractJsonString(payload, "utc_offset"); // "+01:00"
-  bool dst = extractJsonBool(payload, "dst");
+    String payload = https.getString();
+    https.end();
 
-  Serial.printf("NTPS: got utc_offset=%s dst=%d\n", utc_offset.c_str(), dst ? 1 : 0);
+    // Extract dstActive
+    bool dst = payload.indexOf("\"dstActive\":true") >= 0;
 
-  String posix = buildPosixTZ(utc_offset, dst);
-  Serial.printf("NTPS: Applying POSIX TZ: %s\n", posix.c_str());
+    // Build POSIX TZ
+    String posixTZ = "CET-1";  // base TZ for Europe/Belgrade
+    if (dst) posixTZ += "CEST,M3.5.0/2,M10.5.0/3";
 
-  // Apply TZ and start SNTP
-  setenv("TZ", posix.c_str(), 1);
+    Serial.printf("NTPS: Applying POSIX TZ: %s\n", posixTZ.c_str());
+    setenv("TZ", posixTZ.c_str(), 1);
+    tzset();
+   
+    lastNtpInitMillis = millis();
+    tzFetchedThisBoot = true;
+}
+
+// Initialize NTP subsystem at boot.
+// This sets a safe default TZ (UTC) and configTime so that even without internet you have monotonic time functionality.
+void NTPS_init(void) {
+  Serial.println("NTPS: init NTP client");
+  setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
   tzset();
 
   const char* ntp1 = "pool.ntp.org";
@@ -121,46 +135,15 @@ static void fetchAndApplyTimezoneOnce() {
 
   lastNtpInitMillis = millis();
   tzFetchedThisBoot = true;
-
-  // quick loop to check whether SNTP sets time soon (non-blocking mostly)
-  unsigned long start = millis();
-  while (millis() - start < 5000UL) {
-    time_t now = time(nullptr);
-    if (now > 100000) {
-      ntpSynced = true;
-      Serial.println("NTPS: initial sync OK");
-      break;
-    }
-    delay(200);
-  }
-  if (!ntpSynced) {
-    Serial.println("NTPS: initial SNTP not yet synced (will continue in background)");
-  }
-}
-
-// Initialize NTP subsystem at boot.
-// This sets a safe default TZ (UTC) and configTime so that even without internet you have monotonic time functionality.
-void NTPS_init(void) {
-  Serial.println("NTPS: init - applying fallback UTC and starting NTP client");
-  // Start with UTC fallback until we fetch proper TZ
-  setenv("TZ", "UTC0", 1);
-  tzset();
-
-  const char* ntp1 = "pool.ntp.org";
-  const char* ntp2 = "time.nist.gov";
-  configTime(0, 0, ntp1, ntp2);
-
-  lastNtpInitMillis = millis();
-  tzFetchedThisBoot = false;
   ntpSynced = false;
 }
 
 // Call frequently from loop(). Will trigger timezone fetch once when WiFi is up and will re-init NTP every NTP_SYNC_H hours.
 void NTPS_process(void) {
   // Trigger timezone fetch once after WiFi connects
-  if (!tzFetchedThisBoot && WiFi.status() == WL_CONNECTED) {
-    fetchAndApplyTimezoneOnce();
-  }
+  // if (!tzFetchedThisBoot && WiFi.status() == WL_CONNECTED) {
+  //   fetchAndApplyTimezoneOnce();
+  // }
 
   // Periodically check whether time got synced (once per second)
   unsigned long nowMs = millis();
@@ -206,4 +189,8 @@ String NTPS_getHHMM(void) {
   char buf[6];
   snprintf(buf, sizeof(buf), "%02d:%02d", t->tm_hour, t->tm_min);
   return String(buf);
+}
+
+bool NTPS_isReadyForDisplay() {
+    return NTPS_hasSynced() || (WiFi.status() == WL_CONNECTED);
 }

@@ -10,6 +10,7 @@
 #include "wifi_connection.h"
 #include "config.h"
 #include "pinctrl.h"
+#include "ESP_LCD_Lamp.h"
 
 // --- HTML templates ---
 static const char HTML_BEGIN[] PROGMEM = R"(
@@ -208,22 +209,13 @@ static void saveWiFi(void){
   if(ssid.length() > 3){    
     http_statusMessage = "Saving settings and connecting to SSID: " + ssid;    
   }else{       
-    http_statusMessage = "Saving settings and switching to AP mode only.";    
+    http_statusMessage = "No SSID selected...";    
   }
-  http_statusMessage += "<br>Please disconnect from this WiFi Access Point...";
 
   MAIN_setStatusMsg(http_statusMessage);
   showStatusPage();
 
-  // Keep serving HTTP for status display
-  unsigned long start = millis();
-  while (millis() - start < 5000) {
-    webServer->handleClient(); 
-    ESP.wdtFeed();
-  } 
-
-  // Restart to apply new WiFi settings
-  ESP.restart();
+  WIFIC_stationMode();
 }
 
 // --- Public functions ---

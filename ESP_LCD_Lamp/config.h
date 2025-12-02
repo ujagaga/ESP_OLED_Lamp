@@ -11,6 +11,7 @@
 
 #define AP_MODE_TIMEOUT_S       (60)              // After this period since startup, try to connect as wifi client.
 #define AP_NAME_PREFIX          "SecretSantaClk_" // Will be appended by device MAC
+#define AP_PASS                 "hoho1234"
 
 #define REGION                  "Europe/Belgrade" // Required to fetch correct timezone with respect to daylight savings
 #define NTP_SYNC_H              (4)               // Sync time every 4 hours
