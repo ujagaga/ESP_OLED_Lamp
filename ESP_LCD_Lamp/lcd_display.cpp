@@ -80,5 +80,5 @@ void LCD_color(uint16 c)
 
 void LCD_write(String msg)
 {
-  tft.println(msg);
+  tft.print(msg);
 }

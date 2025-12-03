@@ -34,23 +34,57 @@ static const char INDEX_HTML_0[] PROGMEM = R"(
 <style>
   .btn_b{border:0;border-radius:0.3rem;color:#fff;line-height:4rem;font-size:3rem;margin:1%;height:4rem;width:4rem;background-color:#1fa3ec;flex:1;}
   .btn_cfg{border:0;border-radius:0.3rem;color:#fff;line-height:1.4rem;font-size:0.8rem;margin:1ch;height:2rem;width:10rem;background-color:#ff3300;}      
-  .row{display: flex;justify-content: space-between;align-items: center;}      
+  .row{display: flex;justify-content: space-between;align-items: center;}   
+  .lightBtnOff, .lightBtnOn{width: 140px; height: 140px;position: relative;	margin-left: auto;margin-right: auto;	margin-top: 70px;	z-index: 100;	border-radius: 50%;}
+  .lightBtnOff::before, .lightBtnOff::after, .lightBtnOff span, .lightBtnOn::before, .lightBtnOn::after, .lightBtnOn span{display: block;	content: "";position: absolute;}
+  .lightBtnOff::before, .lightBtnOn::before{width: 120px;	height: 120px;background: black;	border-radius: 50%;	top: 10px;left: 10px;}
+  .lightBtnOff::before{	border: 2px solid #ACABA4;}
+  .lightBtnOn::before{border: 2px solid white;box-shadow: 0 0 20px white;}
+  .lightBtnOff::after, .lightBtnOn::after{width: 70px;height: 70px;	top: 31px;left: 31px;	border-radius: 50%;}
+  .lightBtnOff::after{	background: black;	border: 6px solid #8a8a5c;}
+  .lightBtnOn::after{	background: black;	border: 6px solid #66ff66;}
+  .lightBtnOff span, .lightBtnOn span{	width: 8px;	height: 20px;		border: 6px solid black;	top: 22px;	left: 62px;	z-index: 4;}
+  .lightBtnOff span{	background: #8a8a5c;}
+  .lightBtnOn span{	background: #66ff66;}   
 </style>
 <div class="contain">
   <div class="center_div">
-)";
-
-const char INDEX_HTML_1[] PROGMEM = R"(
+  <div class='row'>
+    <div class="lightBtnOn" id="tgl" onclick="toggleLight();">
+    <span></span>
+    </div>
+  </div>
   </div>
   <hr>
+  <a href="https://github.com/ujagaga/ESP_OLED_Lamp" target="_blank" rel="noopener noreferrer">Source code</a>
+)";
+
+const char INDEX_HTML_1[] PROGMEM = R"(  
   <br>
   <button class="btn_cfg" type="button" onclick="location.href='/selectap';">Configure WiFi</button>
   <br/>
 </div>
 <script>
-  function toggleLight() {
-    const timestamp = new Date().getTime();
-    location.href = `/trigger?t=${timestamp}`;
+  var current = 0;
+  var cn=new WebSocket('ws://'+location.hostname+':81/');
+  cn.onopen=function(){
+    cn.send('{"STATUS":""}');    
+  };
+  cn.onmessage=function(e){
+    var data=JSON.parse(e.data);
+
+    if(data.hasOwnProperty('CURRENT')){
+      if(data.CURRENT == 0){
+        document.getElementById('tgl').classList.add('lightBtnOff');
+        document.getElementById('tgl').classList.remove('lightBtnOn');
+      }else{
+        document.getElementById('tgl').classList.remove('lightBtnOff');
+        document.getElementById('tgl').classList.add('lightBtnOn');
+      }	
+    } 		  
+  };
+  function toggleLight() {    
+    cn.send('{"TOGGLE": "1"}');
   }
 </script>
 )";
@@ -141,21 +175,12 @@ ESP8266WebServer* webServer = nullptr;
 void showStartPage() { 
   String response = FPSTR(HTML_BEGIN);
   response += FPSTR(INDEX_HTML_0);
-  response += "<div class='row'>";
-  response += "<button class=\"btn_b\" type=\"button\" onclick=\"toggleLight();\"></button>";
-  response += "</div>";
+  response += "<p>Station IP: " + WIFIC_getStationIp() + "</p>";
   response += FPSTR(INDEX_HTML_1); 
   response += FPSTR(HTML_END);
   webServer->send(200, "text/html", response);  
 }
 
-static void trigger(void){
-  // Toggle LED: read current state and invert
-  static bool ledState = false;
-  ledState = !ledState;
-  PINCTRL_trigger(ledState);
-  showStartPage();  
-}
 
 static void showNotFound(void){
   webServer->send(404, "text/html; charset=iso-8859-1","<html><head> <title>404 Not Found</title></head><body><h1>Not Found</h1></body></html>"); 
@@ -232,7 +257,6 @@ void HTTP_SERVER_init(void){
   webServer->on("/", showStartPage);
   webServer->on("/favicon.ico", showNotFound);
   webServer->on("/selectap", selectAP);
-  webServer->on("/trigger", trigger);
   webServer->on("/wifisave", saveWiFi);
   webServer->onNotFound(showStartPage);
   

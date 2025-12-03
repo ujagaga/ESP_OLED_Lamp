@@ -1,7 +1,8 @@
 #ifndef PINCTRL_H
 #define PINCTRL_H
 
-extern void PINCTRL_trigger(bool setOn);
+extern uint8_t PINCTRL_toggle(void);
 extern void PINCTRL_init(void);
+extern uint8_t PINCTRL_getCurrent(void);
 
 #endif

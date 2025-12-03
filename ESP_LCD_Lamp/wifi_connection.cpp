@@ -112,7 +112,7 @@ void WIFIC_stationMode(void) {
 void WIFIC_setupCallbacks(void) {
     WiFi.onStationModeGotIP([](const WiFiEventStationModeGotIP& evt) {
         stationIP = evt.ip;
-        Serial.printf("Connected, IP: %s\n", stationIP.toString().c_str());
+        Serial.printf("\n\nConnected, IP: %s\n", stationIP.toString().c_str());
 
         if (!stationConnectedOnce) {
             stationConnectedOnce = true;
@@ -169,5 +169,13 @@ String WIFIC_getApList(void) {
         }
     }
     return result;
+}
+
+String WIFIC_getStationIp()
+{
+    if (WiFi.status() == WL_CONNECTED){
+        return WiFi.localIP().toString();
+    }
+    return "";
 }
 

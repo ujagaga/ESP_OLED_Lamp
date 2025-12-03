@@ -1,7 +1,7 @@
 #include <ArduinoJson.h>
 #include <WebSocketsServer.h>
 #include "wifi_connection.h"
-
+#include "pinctrl.h"
 
 WebSocketsServer wsServer = WebSocketsServer(81);
 
@@ -33,6 +33,18 @@ static void serverEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t le
         String APList = "{\"APLIST\":\"" + WIFIC_getApList() + "\"}";
         wsServer.sendTXT(num, APList);   
       }
+
+      if(root.containsKey("TOGGLE")){
+        uint8_t ledState = PINCTRL_toggle(); 
+        String bcmsg = "{\"CURRENT\":" + String(ledState) + "}";
+        WS_ServerBroadcast(bcmsg);
+      }
+
+      if(root.containsKey("STATUS")){
+        uint8_t ledState = PINCTRL_getCurrent(); 
+        String bcmsg = "{\"CURRENT\":" + String(ledState) + "}";
+        WS_ServerBroadcast(bcmsg);
+      }      
     }      
   }   
 }
