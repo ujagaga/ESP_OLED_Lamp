@@ -2,12 +2,13 @@
 #define CONFIG_H
 
 // GPIO definitions
-#define TFT_CS   -1    
-#define TFT_MOSI 13  
-#define TFT_SCLK 14  
-#define TFT_DC   5  
-#define TFT_RST  4  
-#define LED_PIN  15
+#define TFT_CS    -1    
+#define TFT_MOSI  13  
+#define TFT_SCLK  14  
+#define TFT_DC    5  
+#define TFT_RST   4  
+#define LED_PIN   15
+#define BTN_PIN   3
 
 #define AP_MODE_TIMEOUT_S       (60)              // After this period since startup, try to connect as wifi client.
 #define AP_NAME_PREFIX          "SecretSantaClk_" // Will be appended by device MAC

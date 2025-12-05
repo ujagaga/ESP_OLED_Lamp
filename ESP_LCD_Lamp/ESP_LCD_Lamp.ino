@@ -102,4 +102,10 @@ void loop(void) {
       stationIpDisplayed = true;
     }
   }
+
+  uint8_t ledState = PINCTRL_btnPressed();
+  if(ledState != 255){
+    String bcmsg = "{\"CURRENT\":" + String(ledState) + "}";
+    WS_ServerBroadcast(bcmsg);
+  }
 }

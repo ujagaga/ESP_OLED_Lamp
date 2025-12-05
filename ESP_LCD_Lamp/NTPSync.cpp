@@ -117,7 +117,11 @@ String NTPS_getHH() {
   struct tm result;
   localtime_r(&now, &result); 
   char buf[6] = {0};
-  snprintf(buf, sizeof(buf), "%02d", result.tm_hour + 1);
+  int hour = result.tm_hour + 1;
+  if(hour == 24){
+    hour = 0;
+  }
+  snprintf(buf, sizeof(buf), "%02d", hour);
   return String(buf);
 }
 
