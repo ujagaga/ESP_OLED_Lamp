@@ -116,7 +116,6 @@ void WIFIC_setupCallbacks(void) {
 
         if (!stationConnectedOnce) {
             stationConnectedOnce = true;
-            NTPS_init(); // Initialize NTP on first successful STA connection
         }
     });
 

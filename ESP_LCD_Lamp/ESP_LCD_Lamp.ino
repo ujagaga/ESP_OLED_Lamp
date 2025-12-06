@@ -53,6 +53,7 @@ void setup(void) {
   WS_init();  
   HTTP_SERVER_init();  
   LCD_init();
+  NTPS_init();
 }
 
 void loop(void) { 
@@ -65,8 +66,7 @@ void loop(void) {
     {
       state_show_clk_wait = true;
       LCD_clear();
-      LCD_write("Waiting for WiFi,\nNTP sync..."); 
-           
+      LCD_write("Waiting for WiFi,\nNTP sync...");            
     }else {
       String hh = NTPS_getHH();
       String mm = NTPS_getMM();
@@ -99,7 +99,7 @@ void loop(void) {
       LCD_write("\nConnected IP:\n");
       LCD_color(C_WHITE);
       LCD_write(stationIp);
-      stationIpDisplayed = true;
+      stationIpDisplayed = true;      
     }
   }
 
