@@ -9,7 +9,7 @@ Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 void LCD_init() 
 {
   SPI.begin(); // default hardware SPI pins, no need to pass pins
-  tft.init(284, 76, SPI_MODE1);
+  tft.init(284, 76, SPI_MODE3);
 
   tft.fillScreen(C_BLACK);
   tft.setCursor(0, 0);

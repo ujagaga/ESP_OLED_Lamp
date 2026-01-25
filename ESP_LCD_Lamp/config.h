@@ -3,7 +3,7 @@
 
 // GPIO definitions
 #define TFT_CS    -1    
-#define TFT_MOSI  13  
+#define TFT_MOSI  12  
 #define TFT_SCLK  14  
 #define TFT_DC    5  
 #define TFT_RST   4  
