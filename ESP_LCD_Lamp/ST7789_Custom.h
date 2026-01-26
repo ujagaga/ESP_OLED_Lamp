@@ -4,6 +4,7 @@
 #include <Adafruit_GFX.h>
 #include <SPI.h>
 
+
 // Your specific hardware constants
 #define TFT_DC    5
 #define TFT_RST   4

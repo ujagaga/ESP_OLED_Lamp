@@ -1,15 +1,13 @@
-#include <SPI.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_ST7789.h>
-#include "config.h"
+#include "ST7789_Custom.h"
 #include "lcd_display.h"
 
-Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
+
+ST7789_Custom tft;
 
 void LCD_init() 
 {
-  SPI.begin(); // default hardware SPI pins, no need to pass pins
-  tft.init(284, 76, SPI_MODE3);
+  tft.begin();
+  tft.setRotation(1); // Set to landscape for a wide "bar" look
 
   tft.fillScreen(C_BLACK);
   tft.setCursor(0, 0);
