@@ -35,3 +35,5 @@ Here are some ideas:
 1. Change colours to your preference. The file "lcd_display.h" contains some predefined colors, but you could add your own.
 2. Add date display.
 3. Add weather forcast. There are some free API's you could use to get weather for a specific location.
+
+![Preview](Preview.jpg)
