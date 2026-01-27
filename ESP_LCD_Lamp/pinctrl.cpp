@@ -41,16 +41,14 @@ uint8_t PINCTRL_getCurrent()
   return lightState; 
 }
 
-uint8_t PINCTRL_btnPressed() { 
+void PINCTRL_btnPressed() { 
 
-  int retVal = 255;
   if (digitalRead(BTN_PIN) == LOW) {      
-    retVal = PINCTRL_toggle();        
+    PINCTRL_toggle();        
   }
 
   while(digitalRead(BTN_PIN) == LOW){
     delay(10);
   }
-  return retVal;
 }
 

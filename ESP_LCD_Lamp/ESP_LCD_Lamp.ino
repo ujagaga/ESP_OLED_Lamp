@@ -1,11 +1,3 @@
-/* 
- *  Author: Rada Berar
- *  email: ujagaga@gmail.com
- *  
- *  This is the main sketch file. 
- *  It provides a periodic pooling of other services.
- */
-
 #include "wifi_connection.h"
 #include "config.h"
 #include "pinctrl.h"
@@ -14,12 +6,22 @@
 #include "web_socket.h"
 #include "lcd_display.h"
 
+enum Operation {
+  Init,
+  WifiCredentials,
+  ConnectToAp,
+  ShowIp,
+  ShowTime
+};
+
+static Operation state = Init;
+static uint32_t stateChangedAt = 0;
+static int lastSeconds = 0;
+static int blikX = 0;
 static String statusMessage = "";         /* This is set and requested from other modules. */
-static bool state_wifi_creds = false;
-static bool state_show_clk_wait = false;
 static String timeStringHH = "";
 static String timeStringMM = "";
-static bool stationIpDisplayed = false;
+static uint8_t oldLedState = 255;
 
 void MAIN_setStatusMsg(String msg){
   statusMessage = msg;
@@ -32,19 +34,32 @@ String MAIN_getStatusMsg(void){
 static void display_wifi_credentials()
 {
   LCD_clear();
-  LCD_textSize(3);
   LCD_color(C_YELLOW);
-  LCD_write("WiFi SSID:\n");
+  LCD_write("\nWiFi SSID:\n");
   LCD_color(C_WHITE);
-  String message = String(WIFIC_getDeviceName()) + "\n";
+  String message = String(WIFIC_getDeviceName());
   LCD_write(message);
   LCD_color(C_YELLOW);
-  LCD_write("WiFi PASS:\n");
+  LCD_write("\nPASS:");
   LCD_color(C_WHITE);
   LCD_write(AP_PASS); 
+  LCD_color(C_YELLOW);
+  LCD_write("\nIP:");
+  LCD_color(C_WHITE);
+  LCD_write(WIFIC_getApIp());  
 }
 
-void setup(void) {
+static void display_intro()
+{  
+  LCD_clear();   
+  LCD_setFont(Font18pt);
+  LCD_color(C_BLUE);
+  LCD_write("\n  Ivanin sat");
+  LCD_setFont(Font9pt);
+}
+
+void setup(void) 
+{
   /* Need to wait for background processes to complete. Otherwise trouble with gpio.*/
   delay(100);   
   Serial.begin(115200); 
@@ -56,56 +71,105 @@ void setup(void) {
   NTPS_init();
 }
 
-void loop(void) { 
+void loop(void){
   HTTP_SERVER_process();
   WS_process();
-  NTPS_process();
+  if(WIFIC_stationConnected()){
+    NTPS_process();
+  } 
 
-  if(millis() > 20000){    
-    if(!state_show_clk_wait)
-    {
-      state_show_clk_wait = true;
-      LCD_clear();
-      LCD_write("Waiting for WiFi,\nNTP sync...");            
-    }else {
-      String hh = NTPS_getHH();
-      String mm = NTPS_getMM();
+  bool redraw = false;
 
-      if(!hh.equals(timeStringHH) || !mm.equals(timeStringMM)){
-        timeStringHH = hh;
-        timeStringMM = mm;
-
-        LCD_clear();
-        LCD_color(C_YELLOW);
-        LCD_textSize(8);        
-        LCD_write(" ");
-        LCD_textSize(14);
-        LCD_write(hh);  
-        LCD_write("\n");
-        LCD_textSize(8);        
-        LCD_write(" ");
-        LCD_textSize(14);
-        LCD_write(mm);
-      }
-    }  
-  }else if(millis() > 7000){
-    if(!state_wifi_creds){
-      state_wifi_creds = true;
-      display_wifi_credentials();
-    }
-    String stationIp = WIFIC_getStationIp();
-    if((stationIp.length() > 1) && !stationIpDisplayed){
-      LCD_color(C_YELLOW);
-      LCD_write("\nConnected IP:\n");
-      LCD_color(C_WHITE);
-      LCD_write(stationIp);
-      stationIpDisplayed = true;      
-    }
-  }
-
-  uint8_t ledState = PINCTRL_btnPressed();
-  if(ledState != 255){
+  PINCTRL_btnPressed();
+  uint8_t ledState = PINCTRL_getCurrent();
+  if((ledState != 255) && (oldLedState != ledState)){
+    oldLedState = ledState;
+    LCD_setInverted(ledState);
+    redraw = true;
     String bcmsg = "{\"CURRENT\":" + String(ledState) + "}";
     WS_ServerBroadcast(bcmsg);
   }
+
+  // State machine
+  switch(state){
+    case Init:
+    {
+      display_intro();
+      state = WifiCredentials;
+      stateChangedAt = millis();
+    }break;
+
+    case WifiCredentials:
+    {
+      if((millis() - stateChangedAt) > 5000){
+        display_wifi_credentials();
+        state = ConnectToAp;
+        stateChangedAt = millis();
+      }      
+    }break;
+
+    case ConnectToAp:
+    {
+      if((millis() - stateChangedAt) > 5000){
+        LCD_clear();
+        LCD_write("\nWaiting for WiFi,\nNTP sync..."); 
+        String stationIp = WIFIC_getStationIp();
+        state = ShowIp;
+        stateChangedAt = millis();        
+      }   
+    }break;
+
+    case ShowIp:
+    {
+      String stationIp = WIFIC_getStationIp();
+      if((stationIp.length() > 1)){
+        LCD_color(C_YELLOW);
+        LCD_write("\nConnected IP:\n");
+        LCD_color(C_WHITE);
+        LCD_write(stationIp);            
+        state = ShowTime;
+        stateChangedAt = millis();  
+      }    
+    }break;
+
+    default:
+    {
+      if(NTPS_hasSynced()){
+        String hh = NTPS_getHH();
+        String mm = NTPS_getMM();
+
+        if(!hh.equals(timeStringHH) || !mm.equals(timeStringMM) || redraw){
+          timeStringHH = hh;
+          timeStringMM = mm;
+
+          LCD_clear(); 
+          LCD_setFont(Font9pt);
+          LCD_write("\n\n\n\n");  
+          LCD_setFont(Font24pt);  
+          LCD_textSize(2);
+          LCD_write(timeStringHH);
+          blikX = LCD_getX();
+          LCD_write(":");
+          LCD_write(timeStringMM);
+        }
+
+        int seconds = NTPS_getSeconds();
+        if(lastSeconds != seconds){          
+          lastSeconds = seconds;
+          bool blinkOn = (lastSeconds % 2) == 0;
+          LCD_setX(blikX);
+
+          if(blinkOn){
+            LCD_color(LCD_getFgColor());  
+            LCD_write(":");
+          }else{
+            LCD_color(LCD_getBgColor());  
+            LCD_write(":");
+          }
+        }
+      }
+    }break;
+  }
+
 }
+

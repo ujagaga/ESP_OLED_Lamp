@@ -21,7 +21,7 @@ static char myApName[32] = {0};         // AP name
 static char st_ssid[SSID_SIZE] = {0};   // Saved SSID
 static char st_pass[WIFI_PASS_SIZE] = {0}; // Saved password
 static IPAddress stationIP;
-static IPAddress apIP(192, 168, 1, 1);
+static IPAddress apIP(192, 168, 4, 1);
 static bool stationConnectedOnce = false; // mark first successful STA connect
 
 // -----------------------------------------------------------------------------
@@ -31,12 +31,8 @@ char* WIFIC_getDeviceName(void) {
     return myApName;
 }
 
-IPAddress WIFIC_getApIp(void) {
-    return apIP;
-}
-
-IPAddress WIFIC_getStIP(void) {
-    return stationIP;
+String WIFIC_getApIp(void) {
+    return apIP.toString();
 }
 
 String WIFIC_getStSSID(void) {
@@ -85,7 +81,7 @@ static void APMode(void) {
     WiFi.persistent(true);
 
     String apName = String(AP_NAME_PREFIX) + WiFi.macAddress();
-    apName.toCharArray(myApName, sizeof(myApName));
+    apName.toCharArray(myApName, 16);
 
     WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
     WiFi.softAP(myApName, AP_PASS);
@@ -176,5 +172,10 @@ String WIFIC_getStationIp()
         return WiFi.localIP().toString();
     }
     return "";
+}
+
+bool WIFIC_stationConnected()
+{
+    return (WiFi.status() == WL_CONNECTED);
 }
 

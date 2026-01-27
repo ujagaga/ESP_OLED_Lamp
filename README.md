@@ -8,6 +8,26 @@ The main difference, beside resolution is that the 240x240 screen worked well wi
 The device spins up an HTTP server which is tied to the AP, so after the device connects to an external WiFi as station, this web server will not be available on that network, but only on the initial AP.
 Spinning a second HTTP web server can be done on same port, but for the second interface, but it takes a lot of RAM, so might crash.
 
+## How to start
+
+1. Install Arduino IDE
+
+2. Go to "File/Preferences/Additional boards manager" and add link to ESP8266 board support repository:
+
+        https://arduino.esp8266.com/stable/package_esp8266com_index.json
+
+3. On the left toolbar find the library manager and install:
+ - NTPClient by Fabrice Weinberg
+ - Timezone by Jack Christensen
+ - Websockets by Markus Sattler
+ - Adafruit GFX Library
+
+4. Select your ESP8266 board (I used WeMos D1 mini)
+
+5. build and program
+
+6. After it boots, the display will show the SSID, Password and IP address so you can connect and configure WiFi to provide internet and NTP synchronization. 
+
 ## Further improvements
 
 Here are some ideas:

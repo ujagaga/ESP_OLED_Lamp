@@ -3,12 +3,12 @@
 
 #include <Arduino.h>
 
-void NTPS_process(void);              // call often from loop()
-bool NTPS_hasSynced(void);            // true if time is reasonably synced
-String NTPS_getHHMM(void);            // returns "HH:MM" (or "--:--" if unknown)
-String NTPS_getHH(void);
-String NTPS_getMM(void);
-String NTPS_getDate(void);
-void NTPS_init(void);
+extern void NTPS_process(void);            
+extern bool NTPS_hasSynced(void);     
+extern String NTPS_getHH(void);
+extern String NTPS_getMM(void);
+extern String NTPS_getDate(void);
+extern void NTPS_init(void);
+extern int NTPS_getSeconds(void);
 
 #endif

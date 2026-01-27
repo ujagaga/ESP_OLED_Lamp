@@ -11,10 +11,26 @@
 #define C_YELLOW 0xFFE0
 #define C_ORANGE 0xFC00
 
+enum FontStyle {
+  Font9pt,
+  Font12pt,
+  Font18pt,
+  Font24pt
+};
+
 extern void LCD_init(void);
 extern void LCD_clear(void);
 extern void LCD_textSize(int txtSize);
 extern void LCD_color(uint16 c);
 extern void LCD_write(String msg);
+extern void LCD_setFont(FontStyle id);
+extern void LCD_setX(int x);
+extern int LCD_getX(void);
+extern void LCD_clearStringArea(String msg);
+extern uint16_t LCD_getBgColor(void);
+extern void LCD_setBgColor(uint16_t color);
+extern uint16_t LCD_getFgColor(void);
+extern void LCD_setFgColor(uint16_t color);
+extern void LCD_setInverted(bool inverted);
 
 #endif

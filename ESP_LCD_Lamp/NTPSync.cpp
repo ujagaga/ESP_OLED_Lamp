@@ -37,21 +37,17 @@ void NTPS_init() {
 void NTPS_process() {
   if (WiFi.status() != WL_CONNECTED) return;
 
-  if (!timeClient.update()) {
-      timeClient.forceUpdate();
-  }
-
-  // mark synced if epoch is realistic
-  if (timeClient.getEpochTime() > 100000) {
-    if (!ntpSynced) {
-        Serial.println("NTPS: time synced");
-        ntpSynced = true;
-    }
-  } else {
-      ntpSynced = false;
+  // The library handles the interval internally based on NTP_UPDATE_INTERVAL_MS
+  // Don't use forceUpdate() in a loop; it bypasses the safety timers.
+  if (timeClient.update()) {
+      if (timeClient.getEpochTime() > 100000) {    
+          if (!ntpSynced) {
+              Serial.println("NTPS: Time Synced Successfully");
+              ntpSynced = true;
+          }
+      }
   }
 }
-
 
 bool NTPS_hasSynced() {
   return ntpSynced;
@@ -62,24 +58,13 @@ time_t NTPS_getLocalEpoch() {
   return serbiaTZ.toLocal(utc);
 }
 
-// -------------------------
-// GET HH:MM (zero-padded, localtime)
-// -------------------------
-String NTPS_getHHMM() {
-  time_t local = NTPS_getLocalEpoch();
-  struct tm t;
-  localtime_r(&local, &t);
-  char buf[6];
-  snprintf(buf, sizeof(buf), "%02d\n%02d", t.tm_hour, t.tm_min);
-  return String(buf);
-}
-
 String NTPS_getHH() {
   time_t local = NTPS_getLocalEpoch();
   struct tm t;
   localtime_r(&local, &t);
   char buf[3];
-  snprintf(buf, sizeof(buf), "%02d", t.tm_hour);
+  // %02d ensures 24h format with leading zero (00-23)
+  snprintf(buf, sizeof(buf), "%02d", t.tm_hour); 
   return String(buf);
 }
 
@@ -90,6 +75,13 @@ String NTPS_getMM() {
   char buf[3];
   snprintf(buf, sizeof(buf), "%02d", t.tm_min);
   return String(buf);
+}
+
+int NTPS_getSeconds() {
+  time_t local = NTPS_getLocalEpoch();
+  struct tm t;
+  localtime_r(&local, &t);
+  return t.tm_sec;
 }
 
 String NTPS_getDate() {
