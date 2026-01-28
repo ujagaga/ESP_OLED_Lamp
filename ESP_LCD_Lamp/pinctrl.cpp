@@ -5,7 +5,9 @@
  *  GPIO management module
  */
 #include <Arduino.h>
-#include "config.h"
+
+#define LED_PIN   15
+#define BTN_PIN   3
 
 #define DEBOUNCE_MS 50
 

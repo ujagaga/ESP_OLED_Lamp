@@ -32,5 +32,6 @@ extern void LCD_setBgColor(uint16_t color);
 extern uint16_t LCD_getFgColor(void);
 extern void LCD_setFgColor(uint16_t color);
 extern void LCD_setInverted(bool inverted);
+extern void LCD_drawSnowflake(int x, int y, int r, uint16_t color);
 
 #endif

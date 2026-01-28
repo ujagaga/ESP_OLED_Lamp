@@ -49,6 +49,23 @@ static void display_wifi_credentials()
   LCD_write(WIFIC_getApIp());  
 }
 
+#ifdef USE_ADAFRUIT_ST7789
+static void display_intro()
+{
+  LCD_clear();
+  LCD_setFont(Font12pt);
+  LCD_color(C_BLUE);
+  LCD_write(" Secret Santa\n");
+  LCD_color(C_GREEN);
+  LCD_textSize(3);
+  LCD_write("Clock");
+
+  LCD_drawSnowflake(40, 180, 25, C_WHITE);
+  LCD_drawSnowflake(90, 140, 25, C_WHITE);
+  LCD_drawSnowflake(140, 170, 25, C_WHITE);
+  LCD_drawSnowflake(190, 130, 25, C_WHITE);
+}
+#else
 static void display_intro()
 {  
   LCD_clear();   
@@ -57,6 +74,8 @@ static void display_intro()
   LCD_write("\n  Ivanin sat");
   LCD_setFont(Font9pt);
 }
+#endif
+
 
 void setup(void) 
 {

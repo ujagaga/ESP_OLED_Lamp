@@ -3,15 +3,10 @@
 
 #include <Adafruit_GFX.h>
 #include <SPI.h>
+#include "config.h"
 
-
-// Your specific hardware constants
-#define TFT_DC    5
-#define TFT_RST   4
 #define X_OFFSET_DEFAULT 82
 #define Y_OFFSET_DEFAULT 16
-#define SCREEN_W  76
-#define SCREEN_H  284
 
 class ST7789_Custom : public Adafruit_GFX {
   public:

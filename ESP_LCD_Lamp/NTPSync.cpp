@@ -10,7 +10,7 @@ static const char* NTP_SERVERS[] = {
 "time.cloudflare.com",
 "time.google.com"
 };
-static const unsigned long NTP_UPDATE_INTERVAL_MS = 60 * 1000; // 60s
+static const unsigned long NTP_UPDATE_INTERVAL_MS = 10 * 60 * 1000; // 10min
 
 // ---- NTPClient + Timezone setup ----
 WiFiUDP ntpUDP;

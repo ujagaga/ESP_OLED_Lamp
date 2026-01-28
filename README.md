@@ -2,8 +2,8 @@
 The purpose is to combine an ESP8266 module and an SPI LCD module to create a WiFi controlled clock/lamp 
 I used an D1 Mini as WiFi module ans a BC547 transistor as a switch.
 
-This main git branch contains the code I used for an LCD with resolution 76x284px and is intended to be placed horizontally. There is another git branch "tft240x240" intended for an LCD with resolution 240x240px. 
-The main difference, beside resolution is that the 240x240 screen worked well with Adafruit library, but for this "weird" resolution LCD, I had to write a custom driver as none I tried worked reliably.
+This main git branch contains the code I used for an LCD with resolution 76x284px and is intended to be placed horizontally. There is an older git branch "tft240x240" intended for an LCD with resolution 240x240px. 
+The main difference, beside resolution is that the 240x240 screen worked well with Adafruit library, but for this "weird" resolution LCD, I had to write a custom driver as none I tried worked reliably. You can use this git branch also for the 240x240 LCD or any other based on ST7789 driver, just make sure to adjust the resolution and offsets: X_OFFSET_DEFAULT and Y_OFFSET_DEFAULT.
 
 The device spins up an HTTP server which is tied to the AP, so after the device connects to an external WiFi as station, this web server will not be available on that network, but only on the initial AP.
 Spinning a second HTTP web server can be done on same port, but for the second interface, but it takes a lot of RAM, so might crash.
@@ -21,14 +21,22 @@ Spinning a second HTTP web server can be done on same port, but for the second i
  - Timezone by Jack Christensen
  - Websockets by Markus Sattler
  - Adafruit GFX Library
+ - Adafruit_ST7789 Library
 
 4. Select your ESP8266 board (I used WeMos D1 mini)
 
-5. build and program
+5. Open `config.h` file and adjust configuration:
+ - SCREEN_W
+ - SCREEN_H
+ - whether you want to use the Adafruit LCD driver. 
 
-6. After it boots, the display will show the SSID, Password and IP address so you can connect and configure WiFi to provide internet and NTP synchronization. 
+6. build and program
+
+7. After it boots, the display will show the SSID, Password and IP address so you can connect and configure WiFi to provide internet and NTP synchronization. 
 
 ## Further improvements
+
+Comparing to the old git branch, I implemented a state machine and reduced the number of LCD writes, leaving more CPU time for NTP sync, which made the device work more stabile.
 
 Here are some ideas:
 
