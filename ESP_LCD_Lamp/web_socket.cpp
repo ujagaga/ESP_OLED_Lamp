@@ -16,16 +16,13 @@ void WS_ServerBroadcast(String msg){
 static void serverEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
 { 
   if(type == WStype_TEXT){
-    //Serial.printf("[%u] get Text: %s\r\n", num, payload);
-    char textMsg[length];
-    for(int i = 0; i < length; i++){
-      textMsg[i] = payload[i];          
-    }
+    char textMsg[length + 1];
+    memcpy(textMsg, payload, length);
+    textMsg[length] = '\0';
         
-    DynamicJsonDocument doc(128);
+    DynamicJsonDocument doc(256); // Increased slightly for safety
     DeserializationError error = deserializeJson(doc, textMsg);    
 
-    // Test if parsing succeeds.
     if (!error) {
       JsonObject root = doc.as<JsonObject>();
       
@@ -40,10 +37,22 @@ static void serverEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t le
         WS_ServerBroadcast(bcmsg);
       }
 
+      // Handle the 0-10 intensity range
+      if(root.containsKey("INTENSITY")){
+        int val = root["INTENSITY"];
+        PINCTRL_setIntesity(val);
+        
+        // Broadcast to ALL (keeps multiple phones in sync)
+        String bcmsg = "{\"INTENSITY\":" + String(val) + "}";
+        WS_ServerBroadcast(bcmsg);
+      }
+
       if(root.containsKey("STATUS")){
         uint8_t ledState = PINCTRL_getCurrent(); 
-        String bcmsg = "{\"CURRENT\":" + String(ledState) + "}";
-        WS_ServerBroadcast(bcmsg);
+        int intensity = PINCTRL_getIntesity();
+        // Send both current power state and slider position
+        String bcmsg = "{\"CURRENT\":" + String(ledState) + ",\"INTENSITY\":" + String(intensity) + "}";
+        wsServer.sendTXT(num, bcmsg); 
       }      
     }      
   }   

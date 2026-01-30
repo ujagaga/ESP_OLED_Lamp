@@ -14,10 +14,24 @@
 static long lightOnTimestamp = 0;
 static uint8_t lightState = 0;
 static int lastReading = HIGH;
+static int ledIntensity = 100;
+
+void PINCTRL_setIntesity(int i){
+  ledIntensity = i * 10;  
+
+  if(lightState == 1){
+    analogWrite(LED_PIN, ledIntensity);
+  }
+}
+
+int PINCTRL_getIntesity(){
+  return ledIntensity/10;
+}
 
 void PINCTRL_init(){
   pinMode(LED_PIN, OUTPUT);
   pinMode(BTN_PIN, INPUT_PULLUP);
+  analogWriteRange(100);
 }
 
 uint8_t PINCTRL_toggle()
@@ -28,10 +42,10 @@ uint8_t PINCTRL_toggle()
 
   if(lightState == 0){
     lightState = 1;
-    digitalWrite(LED_PIN, HIGH);
+    analogWrite(LED_PIN, ledIntensity);
   }else{
     lightState = 0;
-    digitalWrite(LED_PIN, LOW);
+    analogWrite(LED_PIN, 0);
   }
   
   lightOnTimestamp = millis();

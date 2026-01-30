@@ -18,7 +18,7 @@ static const char HTML_BEGIN[] PROGMEM = R"(
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
-    <title>Secret Santa Clock</title>
+    <title>WiFi Clock</title>
     <style>
       body { background-color: white; font-family: Arial, Helvetica, Sans-Serif; color: #000000; }
       .contain{width: 100%;}
@@ -34,18 +34,21 @@ static const char INDEX_HTML_0[] PROGMEM = R"(
 <style>
   .btn_b{border:0;border-radius:0.3rem;color:#fff;line-height:4rem;font-size:3rem;margin:1%;height:4rem;width:4rem;background-color:#1fa3ec;flex:1;}
   .btn_cfg{border:0;border-radius:0.3rem;color:#fff;line-height:1.4rem;font-size:0.8rem;margin:1ch;height:2rem;width:10rem;background-color:#ff3300;}      
-  .row{display: flex;justify-content: space-between;align-items: center;}   
-  .lightBtnOff, .lightBtnOn{width: 140px; height: 140px;position: relative;	margin-left: auto;margin-right: auto;	margin-top: 70px;	z-index: 100;	border-radius: 50%;}
-  .lightBtnOff::before, .lightBtnOff::after, .lightBtnOff span, .lightBtnOn::before, .lightBtnOn::after, .lightBtnOn span{display: block;	content: "";position: absolute;}
-  .lightBtnOff::before, .lightBtnOn::before{width: 120px;	height: 120px;background: black;	border-radius: 50%;	top: 10px;left: 10px;}
-  .lightBtnOff::before{	border: 2px solid #ACABA4;}
+  .row{display: flex;justify-content: space-between;align-items: center; padding: 10px;}   
+  .lightBtnOff, .lightBtnOn{width: 140px; height: 140px;position: relative; margin-left: auto;margin-right: auto; margin-top: 70px; z-index: 100; border-radius: 50%;}
+  .lightBtnOff::before, .lightBtnOff::after, .lightBtnOff span, .lightBtnOn::before, .lightBtnOn::after, .lightBtnOn span{display: block; content: "";position: absolute;}
+  .lightBtnOff::before, .lightBtnOn::before{width: 120px; height: 120px;background: black;  border-radius: 50%; top: 10px;left: 10px;}
+  .lightBtnOff::before{ border: 2px solid #ACABA4;}
   .lightBtnOn::before{border: 2px solid white;box-shadow: 0 0 20px white;}
-  .lightBtnOff::after, .lightBtnOn::after{width: 70px;height: 70px;	top: 31px;left: 31px;	border-radius: 50%;}
-  .lightBtnOff::after{	background: black;	border: 6px solid #8a8a5c;}
-  .lightBtnOn::after{	background: black;	border: 6px solid #66ff66;}
-  .lightBtnOff span, .lightBtnOn span{	width: 8px;	height: 20px;		border: 6px solid black;	top: 22px;	left: 62px;	z-index: 4;}
-  .lightBtnOff span{	background: #8a8a5c;}
-  .lightBtnOn span{	background: #66ff66;}   
+  .lightBtnOff::after, .lightBtnOn::after{width: 70px;height: 70px; top: 31px;left: 31px; border-radius: 50%;}
+  .lightBtnOff::after{  background: black;  border: 6px solid #8a8a5c;}
+  .lightBtnOn::after{ background: black;  border: 6px solid #66ff66;}
+  .lightBtnOff span, .lightBtnOn span{  width: 8px; height: 20px;   border: 6px solid black;  top: 22px;  left: 62px; z-index: 4;}
+  .lightBtnOff span{  background: #8a8a5c;}
+  .lightBtnOn span{ background: #66ff66;}
+  .sld-cont { width: 80%; margin: 20px auto; text-align: center; }
+  input[type=range] { width: 100%; margin: 15px 0; }
+  .label { font-weight: bold; color: #444; }
 </style>
 <div class="contain">
   <div class="center_div">
@@ -54,9 +57,12 @@ static const char INDEX_HTML_0[] PROGMEM = R"(
     <span></span>
     </div>
   </div>
+  <div class="sld-cont">
+    <input type="range" id="isld" min="0" max="10" step="1" value="0" oninput='setIntensity(this.value)'>
+  </div>
   </div>
   <hr>
-  <a href="https://github.com/ujagaga/ESP_OLED_Lamp" target="_blank" rel="noopener noreferrer">Source code</a>
+  <a href='https://github.com/ujagaga/ESP_OLED_Lamp' target="_blank" rel="noopener noreferrer">Source code</a>
 )";
 
 const char INDEX_HTML_1[] PROGMEM = R"(  
@@ -65,7 +71,6 @@ const char INDEX_HTML_1[] PROGMEM = R"(
   <br/>
 </div>
 <script>
-  var current = 0;
   var cn=new WebSocket('ws://'+location.hostname+':81/');
   cn.onopen=function(){
     cn.send('{"STATUS":""}');    
@@ -80,11 +85,19 @@ const char INDEX_HTML_1[] PROGMEM = R"(
       }else{
         document.getElementById('tgl').classList.remove('lightBtnOff');
         document.getElementById('tgl').classList.add('lightBtnOn');
-      }	
-    } 		  
+      } 
+    }    
+    if(data.hasOwnProperty('INTENSITY')){
+      document.getElementById('isld').value = data.INTENSITY;
+    }
   };
+
   function toggleLight() {    
     cn.send('{"TOGGLE": "1"}');
+  }
+
+  function setIntensity(v) {
+    cn.send('{"INTENSITY":' + v + '}');
   }
 </script>
 )";
